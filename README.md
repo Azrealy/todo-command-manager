@@ -1,11 +1,11 @@
 # Todo manager CLI
 
-Handle the basic CRUD database execution of todo cmd.
+Handle the basic CRUD database manipulation for `todo` cmd.
 
 # Setup todo cmd
 
 ```bash
-sudo python3.6 setup.py install
+python3.6 setup.py install
 ```
 
 # Usage of Todo cmd
@@ -31,7 +31,7 @@ optional arguments:
 ```
 
 ## Add todo task
-When use the `add` sub-command text type arguments should be given. 
+When use the `add` sub-command text type arguments should be given. When implement todo creation, the `Created` time will be record.
 ```bash
 $todo add "Say Hello."
 Task has been added successfully.
@@ -39,13 +39,13 @@ Task has been added successfully.
 ```
 
 ## Delete todo task
-When use the `delete` sub-command int type argument should be given. 
+When use the `delete` sub-command int type argument should be given. When implement todo deletion, the `Update` time will be record.
 ```bash
 $todo delete 1
 Task 1 is deleted successfully.
 ```
 ## Update todo task
-When use the `update` sub-command arguments of option `-i` and `-t` should be given. 
+When use the `update` sub-command arguments of option `-i` and `-t` should be given. When implement todo update, the `Update` time will be record.
 ```bash
 $todo update -i 1 -t "Say Bye"
 The Context of task 1 has changed to "Say Bye".
