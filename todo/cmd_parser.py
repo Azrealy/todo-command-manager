@@ -87,6 +87,7 @@ class CmdLineParser(ArgumentParser):
         elif 'add-text' in self.dict_args:
             text = self.dict_args['add-text']
             Todo(context=text, id=generate_next_id()).save()
+            print('Task has been added successfully.')
             result = Todo.find_all({'flag': False})
             self._print_and_check_result(result)
 
@@ -94,8 +95,7 @@ class CmdLineParser(ArgumentParser):
             id = self.dict_args['del-task-id']
             result = Todo(id=id).remove()
             if result:
-                print('Task {} is deleted successfully.'.format(
-                    self.dict_args['del-task-id']))
+                print('Task {} is deleted successfully.'.format(self.dict_args['del-task-id']))
             else:
                 raise RecordIsNotFoundError('This id of task not exist.')
 

@@ -34,8 +34,9 @@ def test_todo_cli_add_subcommand_with_set_text():
 
     # check stdout
     cmd_output = str(stdout, encoding='utf-8')
-    message = 'Task has been added scucessfully.\n1 | hello world\n'
-    assert message in cmd_output
+    message = 'Task has been added successfully.\n' + \
+        '1 | hello world (Created At: 1 mins ago, Updated At: )\n'
+    assert message == cmd_output
 
 
 def test_todo_cli_add_subcommand_without_set_text():
@@ -93,7 +94,7 @@ def test_todo_cli_delete_command_when_task_exist():
 
     # check stdout
     cmd_output = str(stdout, encoding='utf-8')
-    message = 'Task 1 is deleted sucessfully.\n'
+    message = 'Task 1 is deleted successfully.\n'
     assert message == cmd_output
 
 
@@ -104,13 +105,13 @@ def test_todo_cli_delete_command_when_task_not_exist():
     # delete not exist task
     args = ['todo', 'delete', '1']
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = p.communicate()
+    _, stderr = p.communicate()
 
     # check return code
     assert p.returncode == 0
 
-    # check stdout
-    cmd_output = str(stdout, encoding='utf-8')
+    # check std
+    cmd_output = str(stderr, encoding='utf-8')
     message = 'This id of task not exist.\n'
     assert message == cmd_output
 
@@ -151,7 +152,7 @@ def test_todo_cli_update_command_when_task_not_exist():
     assert p.returncode == 0
 
     # check stdout
-    cmd_output = str(stdout, encoding='utf-8')
+    cmd_output = str(stderr, encoding='utf-8')
     message = 'This id of task not exist.\n'
     assert message == cmd_output
 
@@ -213,7 +214,7 @@ def test_todo_cli_complete_command_when_task_not_exist():
     assert p.returncode == 0
 
     # check stdout
-    cmd_output = str(stdout, encoding='utf-8')
+    cmd_output = str(stderr, encoding='utf-8')
     message = 'This id of task not exist.\n'
     assert message == cmd_output
 
@@ -250,7 +251,7 @@ def test_todo_cli_complete_command_when_task_exist():
 
     # check stdout
     cmd_output = str(stdout, encoding='utf-8')
-    message = '1 | hello world\n'
+    message = '1 | hello world (Created At: 1 mins ago, Updated At: 1 mins ago)\n'
     assert message == cmd_output
 
 
@@ -280,7 +281,8 @@ def test_todo_cli_show_command_when_task_exist():
 
     # check stdout
     cmd_output = str(stdout, encoding='utf-8')
-    message = '1 | task will complete\n2 | task still incomplete\n'
+    message = '1 | task will complete (Created At: 1 mins ago, Updated At: 1 mins ago)\n' + \
+        '2 | task still incomplete (Created At: 1 mins ago, Updated At: )\n'
     assert message == cmd_output
 
     # show the tasks status is incomplete
@@ -293,7 +295,7 @@ def test_todo_cli_show_command_when_task_exist():
 
     # check stdout
     cmd_output = str(stdout, encoding='utf-8')
-    message = '2 | task still incomplete\n'
+    message = '2 | task still incomplete (Created At: 1 mins ago, Updated At: )\n'
     assert message == cmd_output
 
     # show the tasks status is complete
@@ -306,6 +308,6 @@ def test_todo_cli_show_command_when_task_exist():
 
     # check stdout
     cmd_output = str(stdout, encoding='utf-8')
-    message = '1 | task will complete\n'
+    message = '1 | task will complete (Created At: 1 mins ago, Updated At: 1 mins ago)\n'
     assert message == cmd_output
     

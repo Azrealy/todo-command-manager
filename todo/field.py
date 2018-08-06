@@ -41,7 +41,6 @@ class Field(object):
             Whether the two Field instances are perfectly equal to each other.
         """
         if isinstance(self, type(other)) and self.__dict__ == other.__dict__:
-            print(type(other))
             return True
         else:
             return False
