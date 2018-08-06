@@ -31,27 +31,27 @@ optional arguments:
 ```
 
 ## Add todo task
-When use the `add` subcommand text type arguments should be setted. 
+When use the `add` sub-command text type arguments should be given. 
 ```bash
 $todo add "Say Hello."
-Task has been added scucessfully.
-1 | Say Hello.
+Task has been added successfully.
+1 | Say Hello. (Created At: 1 mins ago, Updated At: )
 ```
 
 ## Delete todo task
-When use the `delete` subcommand int type argument should be setted. 
+When use the `delete` sub-command int type argument should be given. 
 ```bash
 $todo delete 1
-Task 1 is deleted sucessfully.
+Task 1 is deleted successfully.
 ```
 ## Update todo task
-When use the `update` subcommand arguments of option `-i` and `-t` should be setted. 
+When use the `update` sub-command arguments of option `-i` and `-t` should be given. 
 ```bash
 $todo update -i 1 -t "Say Bye"
 The Context of task 1 has changed to "Say Bye".
 ```
 ## Show todo task
-`Show` subcommand has three option `-c`, `-i`, `-a` use to show defferent task status list.
+`Show` sub-command has three option `-c`, `-i`, `-a` use to show different task status list.
 ```bash
 $todo show --all
 1 | A task has completed
@@ -64,7 +64,7 @@ $todo show --complete
 1 | A task has completed
 ```
 ## Complete todo task
-When use the `delete` subcommand int type argument should be setted. 
+When use the `delete` sub-command int type argument should be given. 
 ```bash
 $todo complete 1
 Task 1 complete.
