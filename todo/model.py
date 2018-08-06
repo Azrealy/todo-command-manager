@@ -1,198 +1,391 @@
 # -*- coding: utf-8 -*-
-import sqlite3
+from .field import Field
+from .utility import SQLConnection
 
-queries = {
-    'CREATE_TABLE': 'CREATE TABLE IF NOT EXISTS {} ({})',
-    'SELECT': 'SELECT {} FROM {} WHERE {}',
-    'INSERT': 'INSERT INTO {} ({}) VALUES({})',
-    'SELECT_ALL': 'SELECT {} FROM {} {}',
-    'UPDATE': 'UPDATE {} SET {} WHERE {}',
-    'DELETE': 'DELETE FROM {} WHERE {}',
-    'DROP_TABLE': 'DROP TABLE {}'
-}
-
-class Model(object):
-    
-    def __init__(self, data_file):
+class ModelMetaclass(type):
+    """
+    Meta class of Model.
+    """
+    def __new__(cls, name, bases, attrs):
         """
-        DB model class, which use to create/execute
-        SQL statement and create connection with DB.
+        Customize the class instance creation
+
+        Every child class which inherit from the `Model` class will automatically
+        create the following attributes of that class.
+
+        Definition Class Attributes:
+        ----------------------------
+            PRIMARY_KEY : Store the attribute name which is belong to
+                        `Field` object with set argument (primary_key = True)
+            MAPPINGS : A dict which storing the relationship of the class
+                       attribute name and it's bounded `Field` object. 
+            TABLE_NAME : The name of table which be took from the class name.
+            FIELDS : A list which store the attribute name which is belong
+                     to `Field` object without set argument (primary_key =True)
+
+        Parametes:
+        ----------
+        cls : object
+            Object of the class.
+        name : str
+            Name of the class.
+        bases : tuple
+            A tuple of class that be inherited from.
+        attrs : dict
+            A dict of class attributes
+        
+        Returns
+        -------
+            A new instance of class
+        """
+        if name == 'Model':
+            return type.__new__(cls, name, bases, attrs)
+        table_name = name
+        primary_key = None
+        fields = []
+        mappings = dict()
+        for k, v in attrs.items():
+            if isinstance(v, Field):
+                mappings[k] = v
+                if v.primary_key:
+                    if primary_key:
+                        raise NameError('Primary key should only be one.')
+                    else:
+                        primary_key = k
+                else:
+                    fields.append(k)
+        if primary_key is None:
+            raise NameError('Primary key not found.')
+        # Delete the class attributes which is belong to `Field` object.
+        # Because the class attributes may be overide by the same name of 
+        # the class instance attributes.
+        for key in mappings:
+            attrs.pop(key)
+
+        attrs['PRIMARY_KEY'] = primary_key
+        attrs['MAPPINGS'] = mappings
+        attrs['TABLE_NAME'] = table_name
+        attrs['FIELDS'] = fields
+        return type.__new__(cls, name, bases, attrs)
+
+
+class Model(dict, metaclass=ModelMetaclass):
+    """
+    The base class of DB model that provides simple ORM.
+
+    This class is inherit dict object so the arguments setting
+    of this child class will be like `Todo(id = 1, context = 'hello')`
+
+    The inherit class should define class attributes like following:
+    
+    ```
+    Class Todo(Model):
+        id = IntegerField()
+        context = TextField()
+    ```
+
+    For that the `MAPPINGS` attribute what create a `ModelMetaclass`
+    will storing the relationship of attribute with it's `Field` object
+
+    Class Methods for DB Manipulation
+    ---------------------------------
+
+    - ``Model.create_table()``: issues 'CREATE TABLE' statement
+    - ``Model.find_all()``: issues 'SELECT' statement and optional with
+                            'WHERE' statement
+    - ``Model.drop_table()``:  issues 'DROP TABLE' statement
+    - ``Model.find()``: issues 'SELECT' and 'WHERE' statement with primary key.
+
+    Instance Methods for DB Manipulation
+    ------------------------------------
+
+    - ``instance.update()``: issues 'UPDATE' statement
+    - ``instance.save()``: issues 'INSERT' statement
+    - ``instance.remove()``: issues 'DELETE' statement
+    """
+    def __init__(self, **kwargs):
+        """
+        Inherit dict object.
+        """
+        super(Model, self).__init__(**kwargs)
+
+    def __getattr__(self, key):
+        """
+        Get instance attributes method
+        
+        Example : 
+        >>> model = Model(id=1)
+        >>> model.id 
+        1
+        """
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError("'Model' object not has attribute {}".format(key))
+
+    def __setattr__(self, key, value):
+        """
+        Set instance attributes method
+
+        Example
+        ------- 
+        >>> model = Model()
+        >>> model.id = 1
+        {'id' : 1}
+        """
+        self[key] = value
+
+    def _get_value_or_default(self, key):
+        """
+        Get the instance attribute value
+        
+        Parameters
+        ----------
+        key : str
+            The name of attribute
+        
+        Returns
+        -------
+        value : str or int or bool
+            The value of the instance attribute.
+            Or the default value which set in the 
+            `Field` Object.
+        """
+        value = getattr(self, key, None)
+        if value is None:
+            field = self.MAPPINGS[key]
+            if field.default is not None:
+                value = field.default
+                setattr(self, key, value)
+        return value
+
+    @classmethod
+    def _select(cls):
+        """
+        SELECT SQL statement
+        """
+        return 'SELECT {}, {} FROM {}'.format(
+            cls.PRIMARY_KEY,
+            ', '.join(cls.FIELDS),
+            cls.TABLE_NAME
+        )
+
+    @classmethod
+    def _delete(cls):
+        """
+        DELETE SQL statement
+        """
+        return 'DELETE FROM {} WHERE {}=?'.format(
+            cls.TABLE_NAME,
+            cls.PRIMARY_KEY
+        )
+
+    @classmethod
+    def create_table(cls):
+        """
+        Execute create table SQL statement.
+        """
+        values = []
+        for key, field in cls.MAPPINGS.items():
+            sql = ' '.join(
+                [key, field.column_type, 'PRIMARY KEY' if field.primary_key else ''])
+            values.append(sql)
+        sql = 'CREATE TABLE IF NOT EXISTS {} ({})'.format(cls.TABLE_NAME, ','.join(values))
+        cursor = SQLConnection().execute(sql)
+        cursor.close()
+
+    @classmethod
+    def drop_table(cls):
+        """
+        Execute drop table SQL statement.
+        """
+        sql = 'DROP TABLE {}'.format(cls.TABLE_NAME)
+        cursor = SQLConnection().execute(sql)
+        cursor.close()
+
+    @classmethod
+    def find_all(cls, condition=None, size=None, **kwargs):
+        """
+        DB Manipulation of 'SELECT' statement with optional 'WHERE'
+        
+        ``conditions`` is a dict of condition and corresponding value.
+        e.g.:
+
+        >>> conditions={'id': 1, 'flag': True}
 
         Parameters
         ----------
-        data_file : str
-            Name of data file.
-        """
-        self.conn = sqlite3.connect(data_file, uri=True)
-
-    
-    def execute(self, query, values=None, commit=False):
-        """
-        Execute SQL query.
-
-        Parameters
-        ----------
-        query : str
-            An SQL query
-        values : list
-            A list, with query parameters
-        commit : bool
-            Determine if need commit DB
+        condition : dict or None
+            Column names with condition value.
+        size : int or None
+            The size of result
 
         Returns
         -------
-        cursor : sqlite3.Cursor
-            An instance of Cursor object
+        object : list(object) or None
+            A list of object dict.
+
+        Examples
+        --------
+        >>> Todo.find_all()
+        [{'id': 1, 'context': 'Hello world', 'flag': True },
+         {'id': 2, 'context': 'Hello japan', 'flag': False }]
+
+        >>> Todo.find_all({'flag' : True})
+        [{'id': 1, 'context': 'Hello world', 'flag': True }]
+
+        >>> Todo.find_all(order_by = 'id desc')
+        [{'id': 2, 'context': 'Hello japan', 'flag': False },
+         {'id': 1, 'context': 'Hello world', 'flag': True }]
         """
-        cursor = self.conn.cursor()
-        if values:
-            cursor.execute(query, list(values))
+        sql = [cls._select()]
+        args = []
+        if condition:
+            for key, value in condition.items():
+                sql.append('WHERE {}=?'.format(key))
+                args.append(value)
+        order_by = kwargs.get('order_by')
+        if order_by:
+            sql.append('ORDER BY')
+            sql.append(order_by)
+        cursor = SQLConnection().execute(' '.join(sql), args)
+        if size:
+            result = cursor.fetchmany(size)
         else:
-            cursor.execute(query)
-        if commit:
-            self.conn.commit()
-        return cursor
-    
-    def create_table(self, table_name, values):
-        """
-        Execute create table SQL query.
-
-        Example of SQL query:
-            CREATE TABLE IF NOT EXISTS table_name (
-                column1 datetype,
-                column2 datetype,
-                ...
-            )
-
-        Parameters
-        ----------
-        table_name : str
-            Table name
-        values : list
-            List of every column value.
-        """
-        query = queries['CREATE_TABLE'].format(table_name, ','.join(values))
-        cursor = self.execute(query, commit=True)
+            result = cursor.fetchall()
         cursor.close()
+        return cls.convert_result_to_object(result)
 
-    def select(self, table_name, **kwargs):
+    @classmethod
+    def find(cls, primary_key):
         """
-        Execute select SQL query.
-
-        Example of SQL query:
-            SELECT * FROM table_name;
-            WHERE columns1 = ? and columns2 = ? and ..;
+        DB Manipulation of 'SELECT' and 'WHERE' statement with primary key.
 
         Parameters
         ----------
-        table_name : str
-            Table name
+        primary_key : Filed object default type
+            The value of primary key
+
+        Returns
+        -------
+        object : list(object) or None
+            A list of object dict.
+        
+        Example
+        -------
+        >>> Todo.find(1)
+        [{'id': 1, 'context': 'Hello world', 'flag': True }]
         """
-        conds = ' and '.join(['{}=?'.format(k) for k in kwargs])
-        values = [kwargs[k] for k in kwargs]
-        query = queries['SELECT'].format('*', table_name, conds)
-        return self.execute(query, values)
+        sql = '{} WHERE {} = ?'.format(cls._select(), cls.PRIMARY_KEY)
+        cursor = SQLConnection().execute(sql, [primary_key])
+        result = cursor.fetchmany(1)
+        cursor.close()
+        return cls.convert_result_to_object(result)
 
-    def insert(self, table_name, **kwargs):
+    def remove(self):
         """
-        Execute insert SQL query.
+        DB Manipulation of 'DELETE' statement
 
-        Example of SQL query:
-            INSERT INTO table_name (columns1, column2, ...);
-            VALUES (?, ?, ...);
-
-        Parameters
-        ----------
-        table_name : str
-            Table name
+        Returns:
+        --------
+        flag : bool
+            If DB manipulation successful return True
+        
+        Example:
+        -------
+        >>> Todo(id=1).remove()
+        True
         """
-        args = ','.join('?' for _ in kwargs)
-        parameter = ','.join([k for k in kwargs])
-        query = queries['INSERT'].format(table_name, parameter, args)
-        values = [kwargs[k] for k in kwargs]
-        return self.execute(query, values)
-    
-    def select_all(self, table_name, option=""):
+        cursor = SQLConnection().execute(
+            self._delete(), [self._get_value_or_default(self.PRIMARY_KEY)])
+        return self.check_cursor_row_count(cursor)
+
+    def update(self):
         """
-        Execute select all SQL query.
+        DB Manipulation of 'UPDATE' statement
 
-        Example of SQL query:
-            SELECT * FROM table_name (order by id);
+        Returns:
+        --------
+        flag : bool
+            If DB manipulation successful return True
 
-        Parameters
-        ----------
-        table_name : str
-            Table name
-        option : str
-            Option query of select all
+        Example:
+        -------
+        >>> Todo(id=1, flag = True).update()
+        True
         """
-        query = queries['SELECT_ALL'].format('*', table_name, option)
-        return self.execute(query)
-    
-    def update_item(self, table_name, set_values, **kwargs):
+        sql = 'UPDATE {} SET  {} where {}=?'.format(
+           self.TABLE_NAME,
+           ', '.join(map(lambda f: '{}=?'.format(f), self)),
+           self.PRIMARY_KEY
+        )
+        args = list(map(self._get_value_or_default, self))
+        args.append(self._get_value_or_default(self.PRIMARY_KEY))
+        cursor = SQLConnection().execute(sql, args)
+        return self.check_cursor_row_count(cursor)
+
+    def save(self):
         """
-        Execute update SQL query.
+        DB Manipulation of 'INSERT' statement
 
-        Example of SQL query:
-            UPDATE table_name
-            SET column1 = ?, column2 = ?, ...
-            WHERE columns1 = ? and columns2 = ? and ..;
+        Returns:
+        --------
+        flag : bool
+            If DB manipulation successful return True
 
-        Parameters
-        ----------
-        table_name : str
-            Table name
-        set_values : dict
-            Values need to update.
+        Example:
+        -------
+        >>> Todo(id=1, context='Hello', flag=True).save()
+        True
         """
-        updates = ['{}=?'.format(k) for k in set_values]
-        update_values = [set_values[k] for k in set_values]
-        condition = ['{}=?'.format(k) for k in kwargs]
-        condition_values = [kwargs[k] for k in kwargs]
+        args = list(map(self._get_value_or_default, self.MAPPINGS))
+        columns = list(map(lambda k: k, self.MAPPINGS))
+        sql =  'INSERT INTO {} ({}) VALUES({})'.format(
+            self.TABLE_NAME,
+            ', '.join(columns),
+            ','.join('?'*len(columns))
+        )
+        cursor = SQLConnection().execute(sql, args)
+        return self.check_cursor_row_count(cursor)
 
-        query = queries['UPDATE'].format(table_name, ', '.join(updates), ' and '.join(condition))
-        return self.execute(query, update_values + condition_values)
-
-    def delete_item(self, table_name, **kwargs):
+    def check_cursor_row_count(self, cursor):
         """
-        Execute delete SQL query.
-
-        Example of SQL query:
-            DELETE FROM table_name;
-            WHERE columns1 = ? and columns2 = ? and ..;
-
-        Parameters
-        ----------
-        table_name : str
-            Table name
-        """
-        condition = ['{}=?'.format(k) for k in kwargs]
-        condition_values = [kwargs[k] for k in kwargs]
-        query = queries['DELETE'].format(table_name, 'and '.join(condition))
-        return self.execute(query, condition_values)
-
-    def drop_table(self, table_name):
-        """
-        Execute drop table SQL query.
-
-        Example of SQL query:
-            DROP TABLE table_name;
-
-        Parameters
-        ----------
-        table_name : str
-            Table name
-        """
-        query = queries['DROP_TABLE'].format(table_name)
-        return self.execute(query)
-
-    def close(self, cursor):
-        """
-        Close cursor of DB
+        Check the row count
 
         Parameters
         ----------
         cursor : sqlite3.Cursor
-            An instance of Cursor object
+            An `cursor` object of sqlite3 connection.
+        
+        Returns
+        -------
+        flag : bool
+            If DB manipulation successful return True
         """
+        count = cursor.rowcount
         cursor.close()
+        if count != 1:
+            return False
+        else:
+            return True
+
+    @classmethod
+    def convert_result_to_object(cls, result):
+        """
+        Convert the result from DB to the object dict.
+        
+        Parameters:
+        -----------
+        result : list(tuple)
+            The result fetch from the DB
+
+        Returns
+        -------
+        object : list(dict) or None
+            A list of object dict.
+        """
+        keys = cls.MAPPINGS
+        if len(result) == 0:
+            return None
+        else:
+            return [cls(**dict(zip(keys, r))) for r in result]

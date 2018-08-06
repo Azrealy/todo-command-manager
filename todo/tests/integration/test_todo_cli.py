@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import pytest
 import subprocess
-from pathlib import Path
 
 def test_todo_cli_when_no_arguments_set():
     """
@@ -36,7 +35,7 @@ def test_todo_cli_add_subcommand_with_set_text():
     # check stdout
     cmd_output = str(stdout, encoding='utf-8')
     message = 'Task has been added scucessfully.\n1 | hello world\n'
-    assert message == cmd_output
+    assert message in cmd_output
 
 
 def test_todo_cli_add_subcommand_without_set_text():

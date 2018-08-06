@@ -3,7 +3,14 @@ from setuptools import setup
 setup(
 	name='todocli',
 	version='0.0.1',
-	py_modules=['todo.todo', 'todo.model', 'todo.app', 'todo.cmd_parser'],
+	py_modules=[
+		'todo.todo',
+		'todo.model',
+		'todo.utility',
+		'todo.field',
+		'todo.app',
+		'todo.cmd_parser',
+	],
 	entry_points={
 		'console_scripts': [
 			'todo = todo.app:main'
