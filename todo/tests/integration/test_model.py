@@ -16,15 +16,8 @@ class User(Model):
     user_created_at = FloatField()
 
 
-@pytest.fixture(scope='function', autouse=True)
-def scope_function():
-    # create table
-    User.create_table()
-    yield
-    # drop table
-    User.drop_table()
-
 def test_crud():
+    User.create_table()
     # create a user record at DB
     times1 = time.time()
     alice = User(user_id=1234, user_name='Alice wonderland',
@@ -53,3 +46,4 @@ def test_crud():
         user_auth=True,
         user_created_at=times1
     )]
+    User.drop_table()

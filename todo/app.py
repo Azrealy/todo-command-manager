@@ -10,10 +10,10 @@ def main():
     Main() function execute todo cli.
     """
     try:
+        Todo.create_table()
         if len(sys.argv[1:]) < 1:
             print('too few arguments.')
         else:
-            Todo.create_table()
             parser = CmdLineParser(sys.argv[1:], TodoActionDispatcher())
             parser.args.dispatch(parser.args)
 

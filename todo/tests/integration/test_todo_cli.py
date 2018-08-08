@@ -1,6 +1,17 @@
 # -*- coding: utf-8 -*-
 import pytest
 import subprocess
+from todo.todo import Todo
+
+
+@pytest.fixture(scope='function', autouse=True)
+def setup_table():
+    """
+    Sets up todo list table.
+    """
+    yield
+    Todo.drop_table()
+
 
 def test_todo_cli_when_no_arguments_set():
     """

@@ -51,6 +51,53 @@ def test_update_action():
                 assert mock_todo.return_value.update.call_count == 1
 
 
+def test_complete_action():
+    with patch('todo.cmd_manager.Todo') as mock_todo:
+        with patch('argparse.ArgumentParser.parse_args',
+                   return_value=argparse.Namespace(
+                **{'complete-task-id': 10})) as mock_args:
+            with patch('todo.cmd_manager.time.time') as mock_time:
+                mock_time.return_value = 1010.1010
+                TodoActionDispatcher()._complete_action(mock_args.return_value)
+                assert mock_todo.call_args == call(
+                    flag=True,
+                    id=10,
+                    update_at=1010.1010
+                )
+                assert mock_todo.return_value.update.call_count == 1
+
+
+def test_show_action_when_choice_complete():
+    with patch('todo.cmd_manager.Todo') as mock_todo:
+        with patch('argparse.ArgumentParser.parse_args',
+                   return_value=argparse.Namespace(
+                **{'complete': True, 'all': False, 'incomplete': False})) as mock_args:
+                TodoActionDispatcher()._show_action(mock_args.return_value)
+                assert mock_todo.find_all.call_args == call(
+                    {'flag': True}
+                )
+
+
+def test_show_action_when_choice_incomplete():
+    with patch('todo.cmd_manager.Todo') as mock_todo:
+        with patch('argparse.ArgumentParser.parse_args',
+                   return_value=argparse.Namespace(
+                **{'complete': False, 'all': False, 'incomplete': True})) as mock_args:
+                TodoActionDispatcher()._show_action(mock_args.return_value)
+                assert mock_todo.find_all.call_args == call(
+                    {'flag': False}
+                )
+
+
+def test_show_action_when_choice_all():
+    with patch('todo.cmd_manager.Todo') as mock_todo:
+        with patch('argparse.ArgumentParser.parse_args',
+                   return_value=argparse.Namespace(
+                **{'complete': False, 'all': True, 'incomplete': False})) as mock_args:
+                TodoActionDispatcher()._show_action(mock_args.return_value)
+                assert mock_todo.find_all.call_args == call()
+
+
 def test_generate_next_id():
     
     with patch('todo.cmd_manager.Todo') as mock_todo:

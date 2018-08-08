@@ -9,7 +9,7 @@ setup(
 		'todo.utility',
 		'todo.field',
 		'todo.app',
-		'todo.cmd_parser',
+		'todo.cmd_manager',
 	],
 	entry_points={
 		'console_scripts': [

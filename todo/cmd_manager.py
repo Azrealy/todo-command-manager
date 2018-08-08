@@ -23,7 +23,6 @@ class TodoActionDispatcher(object):
         args : argparse.Namespace
             An Namespace object of argparse use to storing attributes. 
         """
-        print(vars(args))
         text = vars(args)['add-text']
         Todo(context=text, id=self.generate_next_id()).save()
         print('Task has been added successfully.')
