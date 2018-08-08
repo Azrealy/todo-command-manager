@@ -30,10 +30,11 @@ def test_crud():
     alice = User(user_id=1234, user_name='Alice wonderland',
                  user_auth=True, user_created_at=times1)
     alice.save()
-    jack = User(user_id=4321, user_name='Black jack')
+    jack = User(user_id=4321, user_name='Black jack',
+                user_auth=False, user_created_at=times1)
     jack.save()
     
-    assert [alice, jack] == User.find_all()
+
     assert [jack] == User.find_all(size=1, order_by='user_id desc')
     assert [alice] == User.find_all({'user_auth': True})
     alice_find = User.find(1234)

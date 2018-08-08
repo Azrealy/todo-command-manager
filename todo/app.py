@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from .cmd_parser import CmdLineParser
+from .cmd_manager import CmdLineParser, TodoActionDispatcher
 from .utility import RecordIsNotFoundError
+from .todo import Todo
 import sys
 
 
@@ -12,8 +13,10 @@ def main():
         if len(sys.argv[1:]) < 1:
             print('too few arguments.')
         else:
-            cmd_parser = CmdLineParser(sys.argv[1:])
-            cmd_parser.execute_sql_by_command()
+            Todo.create_table()
+            parser = CmdLineParser(sys.argv[1:], TodoActionDispatcher())
+            parser.args.dispatch(parser.args)
+
     except RecordIsNotFoundError as e:
         print(str(e), file=sys.stderr)
 

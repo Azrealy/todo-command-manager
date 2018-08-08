@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sqlite3
+import time
 
 
 class RecordIsNotFoundError(Exception):
@@ -46,3 +47,29 @@ class SQLConnection(object):
         if autocommit:
             self.conn.commit()
         return cursor
+
+def datetime_filter(stored_time):
+    """
+    Filter datetime
+
+    Parameters
+    ----------
+    stored_time : time.time object
+        Time stored in DB
+    
+    Returns
+    -------
+    message : str
+        Message of elapsed time
+    """
+    delta = int(time.time() - stored_time)
+    if delta < 60:
+        return u'1 mins ago'
+    if delta < 3600:
+        return u'%s mins ago' % (delta // 60)
+    if delta < 86400:
+        return u'%s hours ago' % (delta // 3600)
+    if delta < 604800:
+        return u'%s days ago' % (delta // 86400)
+    dt = datetime.fromtimestamp(stored_time)
+    return u'%s year %s month %s day ago' % (dt.year, dt.month, dt.day)

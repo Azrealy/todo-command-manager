@@ -135,26 +135,6 @@ class Model(dict, metaclass=ModelMetaclass):
         """
         self[key] = value
 
-    def __eq__(self, other):
-        """
-        Checks if two Field instances are perfectly equal to each other.
-
-        Parameters
-        ----------
-        other : Field
-            Comparison target.
-
-        Returns
-        -------
-        equal : bool
-            Whether the two Field instances are perfectly equal to each other.
-        """
-        if isinstance(self, type(other)) and self.__dict__ == other.__dict__:
-            print(type(other))
-            return True
-        else:
-            return False
-
     def _get_value_or_default(self, key):
         """
         Get the instance attribute value
