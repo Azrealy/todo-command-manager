@@ -1,6 +1,6 @@
 # Todo manager CLI
 
-Handle the basic CRUD database manipulation for `todo` cmd.
+A simple CLI todo manager. 
 
 # Setup todo cmd
 
