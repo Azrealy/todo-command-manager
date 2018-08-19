@@ -17,7 +17,7 @@ class ModelMetaclass(type):
         ----------------------------
             PRIMARY_KEY : Store the attribute name which is belong to
                         `Field` object with set argument (primary_key = True)
-            MAPPINGS : A dict which storing the relationship of the class
+            COLUMN_TO_FILED : A dict which storing the relationship of the class
                        attribute name and it's bounded `Field` object. 
             TABLE_NAME : The name of table which be took from the class name.
             FIELDS : A list which store the attribute name which is belong
@@ -43,10 +43,10 @@ class ModelMetaclass(type):
         table_name = name
         primary_key = None
         fields = []
-        mappings = dict()
+        column_to_filed = dict()
         for k, v in attrs.items():
             if isinstance(v, Field):
-                mappings[k] = v
+                column_to_filed[k] = v
                 if v.primary_key:
                     if primary_key:
                         raise NameError('Primary key should only be one.')
@@ -59,11 +59,11 @@ class ModelMetaclass(type):
         # Delete the class attributes which is belong to `Field` object.
         # Because the class attributes may be overide by the same name of 
         # the class instance attributes.
-        for key in mappings:
+        for key in column_to_filed:
             attrs.pop(key)
 
         attrs['PRIMARY_KEY'] = primary_key
-        attrs['MAPPINGS'] = mappings
+        attrs['COLUMN_TO_FILED'] = column_to_filed
         attrs['TABLE_NAME'] = table_name
         attrs['FIELDS'] = fields
         return type.__new__(cls, name, bases, attrs)
@@ -84,7 +84,7 @@ class Model(dict, metaclass=ModelMetaclass):
         context = TextField()
     ```
 
-    For that the `MAPPINGS` attribute what create a `ModelMetaclass`
+    For that the `COLUMN_TO_FILED` attribute what create a `ModelMetaclass`
     will storing the relationship of attribute with it's `Field` object
 
     Class Methods for DB Manipulation
@@ -153,7 +153,7 @@ class Model(dict, metaclass=ModelMetaclass):
         """
         value = getattr(self, key, None)
         if value is None:
-            field = self.MAPPINGS[key]
+            field = self.COLUMN_TO_FILED[key]
             if field.default is not None:
                 value = field.default
                 setattr(self, key, value)
@@ -186,7 +186,7 @@ class Model(dict, metaclass=ModelMetaclass):
         Execute create table SQL statement.
         """
         values = []
-        for key, field in cls.MAPPINGS.items():
+        for key, field in cls.COLUMN_TO_FILED.items():
             sql = ' '.join(
                 [key, field.column_type, 'PRIMARY KEY' if field.primary_key else ''])
             values.append(sql)
@@ -211,7 +211,7 @@ class Model(dict, metaclass=ModelMetaclass):
         ``conditions`` is a dict of condition and corresponding value.
         e.g.:
 
-        >>> conditions={'id': 1, 'flag': True}
+        >>> conditions={'id': 1, 'isCompleted': True}
 
         Parameters
         ----------
@@ -228,15 +228,15 @@ class Model(dict, metaclass=ModelMetaclass):
         Examples
         --------
         >>> Todo.find_all()
-        [{'id': 1, 'context': 'Hello world', 'flag': True },
-         {'id': 2, 'context': 'Hello japan', 'flag': False }]
+        [{'id': 1, 'context': 'Hello world', 'isCompleted': True },
+         {'id': 2, 'context': 'Hello japan', 'isCompleted': False }]
 
-        >>> Todo.find_all({'flag' : True})
-        [{'id': 1, 'context': 'Hello world', 'flag': True }]
+        >>> Todo.find_all({'isCompleted' : True})
+        [{'id': 1, 'context': 'Hello world', 'isCompleted': True }]
 
         >>> Todo.find_all(order_by = 'id desc')
-        [{'id': 2, 'context': 'Hello japan', 'flag': False },
-         {'id': 1, 'context': 'Hello world', 'flag': True }]
+        [{'id': 2, 'context': 'Hello japan', 'isCompleted': False },
+         {'id': 1, 'context': 'Hello world', 'isCompleted': True }]
         """
         sql = [cls._select()]
         args = []
@@ -274,7 +274,7 @@ class Model(dict, metaclass=ModelMetaclass):
         Example
         -------
         >>> Todo.find(1)
-        [{'id': 1, 'context': 'Hello world', 'flag': True }]
+        [{'id': 1, 'context': 'Hello world', 'isCompleted': True }]
         """
         sql = '{} WHERE {} = ?'.format(cls._select(), cls.PRIMARY_KEY)
         cursor = SQLConnection().execute(sql, [primary_key])
@@ -288,7 +288,7 @@ class Model(dict, metaclass=ModelMetaclass):
 
         Returns:
         --------
-        flag : bool
+        isCompleted : bool
             If DB manipulation successful return True
         
         Example:
@@ -298,7 +298,10 @@ class Model(dict, metaclass=ModelMetaclass):
         """
         cursor = SQLConnection().execute(
             self._delete(), [self._get_value_or_default(self.PRIMARY_KEY)])
-        return self.check_cursor_row_count(cursor)
+        count = cursor.rowcount
+        result = True if count == 1 else False
+        cursor.close()
+        return result
 
     def update(self):
         """
@@ -306,12 +309,12 @@ class Model(dict, metaclass=ModelMetaclass):
 
         Returns:
         --------
-        flag : bool
+        isCompleted : bool
             If DB manipulation successful return True
 
         Example:
         -------
-        >>> Todo(id=1, flag = True).update()
+        >>> Todo(id=1, isCompleted = True).update()
         True
         """
         sql = 'UPDATE {} SET  {} where {}=?'.format(
@@ -322,7 +325,10 @@ class Model(dict, metaclass=ModelMetaclass):
         args = list(map(self._get_value_or_default, self))
         args.append(self._get_value_or_default(self.PRIMARY_KEY))
         cursor = SQLConnection().execute(sql, args)
-        return self.check_cursor_row_count(cursor)
+        count = cursor.rowcount
+        result = True if count == 1 else False
+        cursor.close()
+        return result
 
     def save(self):
         """
@@ -330,44 +336,27 @@ class Model(dict, metaclass=ModelMetaclass):
 
         Returns:
         --------
-        flag : bool
+        isCompleted : bool
             If DB manipulation successful return True
 
         Example:
         -------
-        >>> Todo(id=1, context='Hello', flag=True).save()
+        >>> Todo(id=1, context='Hello', isCompleted=True).save()
         True
         """
-        args = list(map(self._get_value_or_default, self.MAPPINGS))
-        columns = list(map(lambda k: k, self.MAPPINGS))
+        args = list(map(self._get_value_or_default, self.COLUMN_TO_FILED))
+        columns = list(map(lambda k: k, self.COLUMN_TO_FILED))
         sql =  'INSERT INTO {} ({}) VALUES({})'.format(
             self.TABLE_NAME,
             ', '.join(columns),
             ','.join('?'*len(columns))
         )
+        print('instance of sql connection ' + str(SQLConnection()))
         cursor = SQLConnection().execute(sql, args)
-        return self.check_cursor_row_count(cursor)
-
-    def check_cursor_row_count(self, cursor):
-        """
-        Check the row count
-
-        Parameters
-        ----------
-        cursor : sqlite3.Cursor
-            An `cursor` object of sqlite3 connection.
-        
-        Returns
-        -------
-        flag : bool
-            If DB manipulation successful return True
-        """
         count = cursor.rowcount
+        result = True if count == 1 else False
         cursor.close()
-        if count != 1:
-            return False
-        else:
-            return True
+        return result
 
     @classmethod
     def convert_result_to_object(cls, result):
@@ -384,7 +373,7 @@ class Model(dict, metaclass=ModelMetaclass):
         object : list(dict) or None
             A list of object dict.
         """
-        keys = cls.MAPPINGS
+        keys = cls.COLUMN_TO_FILED
         if len(result) == 0:
             return None
         else:

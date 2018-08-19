@@ -10,7 +10,7 @@ class Todo(Model):
     """
     id = IntegerField(column_type='TEXT NOT NULL', primary_key=True)
     context = TextField(column_type='INTEGER NOT NULL', default='')
-    flag = BooleanField(column_type='BOOLEAN NOT NULL')
+    isCompleted = BooleanField(column_type='BOOLEAN NOT NULL')
     created_at = FloatField(default=time.time())
     update_at = FloatField()
     

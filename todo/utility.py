@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sqlite3
 import time
+from datetime import datetime
 
 
 class RecordIsNotFoundError(Exception):
@@ -9,20 +10,50 @@ class RecordIsNotFoundError(Exception):
     """
     pass
 
-class SQLConnection(object):
+class Singleton(type):
+    """
+    Singleton metaclass
+
+    Example:
+        class model(object, Singleton):
+            pass
+    >>> m1 = model()
+    >>> m2 = model()
+    >>> m1 == m2
+    True
+    """
+    _instance = dict()
+    def __call__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance[cls.__name__] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instance[cls.__name__]
+
+class SQLConnection(object, metaclass=Singleton):
     """
     A connection of the sqlite3.
     """
-    def __init__(self, path_to_data_file='file:/tmp/data.db'):
+
+    PATH = 'file:/tmp/data.db'
+
+    def __init__(self):
         """
-        Initializes sqlite3 connection
+        Initialize SQLConnection instance.
+        """
+        print('SQL connection instance' + self.PATH)
+        self.conn = sqlite3.connect(self.PATH, uri=True)
+
+    @classmethod
+    def initialize(cls, path_to_file):
+        """
+        Initialize SQLConnection class instance.
 
         Parameters
         ----------
-        data_file : str
+        data_file: str
             A path to data file.
         """
-        self.conn = sqlite3.connect(path_to_data_file, uri=True)
+        print(path_to_file)
+        cls.PATH = path_to_file
 
     def execute(self, sql, args=(), autocommit=True):
         """
@@ -48,9 +79,9 @@ class SQLConnection(object):
             self.conn.commit()
         return cursor
 
-def datetime_filter(stored_time):
+def convert_datetime_to_message(stored_time):
     """
-    Filter datetime
+    Convert datetime to message
 
     Parameters
     ----------
@@ -64,12 +95,12 @@ def datetime_filter(stored_time):
     """
     delta = int(time.time() - stored_time)
     if delta < 60:
-        return u'1 mins ago'
+        return '1 mins ago'
     if delta < 3600:
-        return u'%s mins ago' % (delta // 60)
+        return '%s mins ago' % (delta // 60)
     if delta < 86400:
-        return u'%s hours ago' % (delta // 3600)
+        return '%s hours ago' % (delta // 3600)
     if delta < 604800:
-        return u'%s days ago' % (delta // 86400)
+        return '%s days ago' % (delta // 86400)
     dt = datetime.fromtimestamp(stored_time)
-    return u'%s year %s month %s day ago' % (dt.year, dt.month, dt.day)
+    return '%s year %s month %s day ago' % (dt.year, dt.month, dt.day)
