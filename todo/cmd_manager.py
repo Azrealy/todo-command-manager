@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from argparse import ArgumentParser
 from .todo import Todo
-from .utility import RecordIsNotFoundError, convert_datetime_to_message
+from .utility import RecordIsNotFoundError, convert_time_to_message
 from datetime import datetime
 import time
 
@@ -9,6 +9,9 @@ import time
 class CmdLineParser(object):
 
     def __init__(self, argv):
+        """
+        Initialize CmdLineParser instance.
+        """
         self.parser = ArgumentParser(description='Todo list manager')
         self.subparsers = self.parser.add_subparsers(
             help='sub-command of Todo List manager help')
@@ -26,7 +29,7 @@ class CmdLineParser(object):
         """
         self.parser.add_argument('--init', action='store_true',
                           help='Initialize table of the database.')
-        self.parser.set_defaults(execute_action=self._init_action)
+        self.parser.set_defaults(execute_cmd=self._init_action)
 
 
         self.parser.add_argument('-f', '--file-path', type=str,
@@ -39,8 +42,8 @@ class CmdLineParser(object):
         parser_add = self.subparsers.add_parser(
             'add', help='Add a task to the todo list')
         parser_add.add_argument('add-text', type=str,
-                                help='Add a task using this context.')
-        parser_add.set_defaults(execute_action=self._add_action)
+                                help='Add a task using this text.')
+        parser_add.set_defaults(execute_cmd=self._add_action)
 
     def subcommand_delete(self):
         """
@@ -50,7 +53,7 @@ class CmdLineParser(object):
             'delete', help='Delete a task in the todo list.')
         parser_delete.add_argument('del-task-id', type=int,
                                    help='The task id you want to delete.')
-        parser_delete.set_defaults(execute_action=self._delete_action)
+        parser_delete.set_defaults(execute_cmd=self._delete_action)
 
     def subcommand_update(self):
         """
@@ -63,8 +66,8 @@ class CmdLineParser(object):
         parser_update.add_argument('-i', '--update-task-id', type=int, required=True,
                                    help='The task id you want to update.')
         parser_update.add_argument('-t', '--update-task-text', type=str, required=True,
-                                   help='The context of task you want update.')
-        parser_update.set_defaults(execute_action=self._update_action)
+                                   help='The text of task you want update.')
+        parser_update.set_defaults(execute_cmd=self._update_action)
 
     def subcommand_show(self):
         """
@@ -78,7 +81,7 @@ class CmdLineParser(object):
                                  help='Show incomplete task list.')
         parser_show.add_argument('-a', '--all', action='store_true', default=False,
                                  help='Show all tasks.')
-        parser_show.set_defaults(execute_action=self._show_action)
+        parser_show.set_defaults(execute_cmd=self._show_action)
 
     def subcommand_complete(self):
         """
@@ -88,7 +91,7 @@ class CmdLineParser(object):
             'complete', help='Mark a task as complete.')
         parser_complete.add_argument('complete-task-id', type=int,
                                      help='The task id you want complete.')
-        parser_complete.set_defaults(execute_action=self._complete_action)
+        parser_complete.set_defaults(execute_cmd=self._complete_action)
     
     def _init_action(self):
         """
@@ -102,9 +105,9 @@ class CmdLineParser(object):
         Add todo action
         """
         text = vars(self.args)['add-text']
-        Todo(context=text, id=self.generate_next_id()).save()
+        Todo(text=text, id=self.generate_next_id()).save()
         print('Task has been added successfully.')
-        result = Todo.find_all({'isCompleted': False})
+        result = Todo.find_all({'is_completed': False})
         self._print_and_check_result(result)
 
     def _delete_action(self):
@@ -129,9 +132,9 @@ class CmdLineParser(object):
         """
         id = vars(self.args)['update_task_id']
         text = vars(self.args)['update_task_text']
-        result = Todo(id=id, context=text, update_at=time.time()).update()
+        result = Todo(id=id, text=text, update_at=time.time()).update()
         if result:
-            print('The Context of task {} has changed to "{}".'.format(id, text))
+            print('The text of task {} has changed to "{}".'.format(id, text))
         else:
             raise RecordIsNotFoundError('This id of task not exist.')
 
@@ -140,11 +143,11 @@ class CmdLineParser(object):
         Show todo action
         """
         if vars(self.args)['complete']:
-            result = Todo.find_all({"isCompleted": True})
+            result = Todo.find_all({"is_completed": True})
             self._print_and_check_result(result)
 
         elif vars(self.args)['incomplete']:
-            result = Todo.find_all({"isCompleted": False})
+            result = Todo.find_all({"is_completed": False})
             self._print_and_check_result(result)
 
         elif vars(self.args)['all']:
@@ -156,7 +159,7 @@ class CmdLineParser(object):
         Complete todo action
         """
         id = vars(self.args)['complete-task-id']
-        result = Todo(id=id, isCompleted=True, update_at=time.time()).update()
+        result = Todo(id=id, is_completed=True, update_at=time.time()).update()
         if result:
             print('Task {} complete.'.format(id))
         else:
@@ -174,9 +177,9 @@ class CmdLineParser(object):
         if result:
             for r in result:
                 print('{} | {} (Created At: {}, Updated At: {})'.format(
-                    str(r.id), r.context,
-                    convert_datetime_to_message(r.created_at),
-                    '' if r.update_at == 0.0 else convert_datetime_to_message(
+                    str(r.id), r.text,
+                    convert_time_to_message(r.created_at),
+                    '' if r.update_at == 0.0 else convert_time_to_message(
                         r.update_at)
                 ))
         else:

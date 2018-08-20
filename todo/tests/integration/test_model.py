@@ -3,6 +3,7 @@ import pytest
 from todo.model import Model
 from todo.field import IntegerField, TextField, BooleanField, FloatField
 from sqlite3 import OperationalError
+from todo.utility import SQLConnection
 import time
 
 
@@ -17,6 +18,7 @@ class User(Model):
 
 
 def test_crud():
+    SQLConnection.initialize('file:/tmp/data-test.db')
     User.create_table()
     # create a user record at DB
     times1 = time.time()
@@ -47,3 +49,4 @@ def test_crud():
         user_created_at=times1
     )]
     User.drop_table()
+    SQLConnection.initialize(None)

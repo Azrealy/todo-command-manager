@@ -65,7 +65,6 @@ class ModelMetaclass(type):
         attrs['PRIMARY_KEY'] = primary_key
         attrs['COLUMN_TO_FILED'] = column_to_filed
         attrs['TABLE_NAME'] = table_name
-        attrs['FIELDS'] = fields
         return type.__new__(cls, name, bases, attrs)
 
 
@@ -74,14 +73,14 @@ class Model(dict, metaclass=ModelMetaclass):
     The base class of DB model that provides simple ORM.
 
     This class is inherit dict object so the arguments setting
-    of this child class will be like `Todo(id = 1, context = 'hello')`
+    of this child class will be like `Todo(id = 1, text = 'hello')`
 
     The inherit class should define class attributes like following:
     
     ```
     Class Todo(Model):
         id = IntegerField()
-        context = TextField()
+        text = TextField()
     ```
 
     For that the `COLUMN_TO_FILED` attribute what create a `ModelMetaclass`
@@ -164,9 +163,8 @@ class Model(dict, metaclass=ModelMetaclass):
         """
         SELECT SQL statement
         """
-        return 'SELECT {}, {} FROM {}'.format(
-            cls.PRIMARY_KEY,
-            ', '.join(cls.FIELDS),
+        return 'SELECT {} FROM {}'.format(
+            ', '.join([key for key in cls.COLUMN_TO_FILED]),
             cls.TABLE_NAME
         )
 
@@ -211,7 +209,7 @@ class Model(dict, metaclass=ModelMetaclass):
         ``conditions`` is a dict of condition and corresponding value.
         e.g.:
 
-        >>> conditions={'id': 1, 'isCompleted': True}
+        >>> conditions={'id': 1, 'is_completed': True}
 
         Parameters
         ----------
@@ -228,15 +226,15 @@ class Model(dict, metaclass=ModelMetaclass):
         Examples
         --------
         >>> Todo.find_all()
-        [{'id': 1, 'context': 'Hello world', 'isCompleted': True },
-         {'id': 2, 'context': 'Hello japan', 'isCompleted': False }]
+        [{'id': 1, 'text': 'Hello world', 'is_completed': True },
+         {'id': 2, 'text': 'Hello japan', 'is_completed': False }]
 
-        >>> Todo.find_all({'isCompleted' : True})
-        [{'id': 1, 'context': 'Hello world', 'isCompleted': True }]
+        >>> Todo.find_all({'is_completed' : True})
+        [{'id': 1, 'text': 'Hello world', 'is_completed': True }]
 
         >>> Todo.find_all(order_by = 'id desc')
-        [{'id': 2, 'context': 'Hello japan', 'isCompleted': False },
-         {'id': 1, 'context': 'Hello world', 'isCompleted': True }]
+        [{'id': 2, 'text': 'Hello japan', 'is_completed': False },
+         {'id': 1, 'text': 'Hello world', 'is_completed': True }]
         """
         sql = [cls._select()]
         args = []
@@ -274,7 +272,7 @@ class Model(dict, metaclass=ModelMetaclass):
         Example
         -------
         >>> Todo.find(1)
-        [{'id': 1, 'context': 'Hello world', 'isCompleted': True }]
+        [{'id': 1, 'text': 'Hello world', 'is_completed': True }]
         """
         sql = '{} WHERE {} = ?'.format(cls._select(), cls.PRIMARY_KEY)
         cursor = SQLConnection().execute(sql, [primary_key])
@@ -288,7 +286,7 @@ class Model(dict, metaclass=ModelMetaclass):
 
         Returns:
         --------
-        isCompleted : bool
+        is_completed: bool
             If DB manipulation successful return True
         
         Example:
@@ -309,12 +307,12 @@ class Model(dict, metaclass=ModelMetaclass):
 
         Returns:
         --------
-        isCompleted : bool
+        is_completed: bool
             If DB manipulation successful return True
 
         Example:
         -------
-        >>> Todo(id=1, isCompleted = True).update()
+        >>> Todo(id=1, is_completed= True).update()
         True
         """
         sql = 'UPDATE {} SET  {} where {}=?'.format(
@@ -336,12 +334,12 @@ class Model(dict, metaclass=ModelMetaclass):
 
         Returns:
         --------
-        isCompleted : bool
+        is_completed: bool
             If DB manipulation successful return True
 
         Example:
         -------
-        >>> Todo(id=1, context='Hello', isCompleted=True).save()
+        >>> Todo(id=1, text='Hello', is_completed=True).save()
         True
         """
         args = list(map(self._get_value_or_default, self.COLUMN_TO_FILED))
@@ -351,7 +349,6 @@ class Model(dict, metaclass=ModelMetaclass):
             ', '.join(columns),
             ','.join('?'*len(columns))
         )
-        print('instance of sql connection ' + str(SQLConnection()))
         cursor = SQLConnection().execute(sql, args)
         count = cursor.rowcount
         result = True if count == 1 else False

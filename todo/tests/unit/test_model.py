@@ -20,14 +20,13 @@ class User(Model):
 
 def test_init():
     assert User.PRIMARY_KEY == 'user_id'
-    assert User.MAPPINGS == {
+    assert User.COLUMN_TO_FILED == {
         'user_id': IntegerField(primary_key=True),
         'user_name': TextField(default='Administrator'),
         'user_auth': BooleanField(),
         'user_created_at': FloatField()
     }
     assert User.TABLE_NAME == 'User'
-    assert set(User.FIELDS) == set(['user_name', 'user_auth', 'user_created_at'])
     user = User(user_id=1, user_name='Alice')
     assert user.user_id == 1 and user.user_name == 'Alice'
     assert user.user_name == 'Alice'
