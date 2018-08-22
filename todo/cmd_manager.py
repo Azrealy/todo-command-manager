@@ -11,6 +11,11 @@ class CmdLineParser(object):
     def __init__(self, argv):
         """
         Initialize CmdLineParser instance.
+
+        Parameters
+        ----------
+        argv : list
+            A list of arguments from sys.argv.
         """
         self.parser = ArgumentParser(description='Todo list manager')
         self.subparsers = self.parser.add_subparsers(

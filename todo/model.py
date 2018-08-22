@@ -20,8 +20,6 @@ class ModelMetaclass(type):
             COLUMN_TO_FILED : A dict which storing the relationship of the class
                        attribute name and it's bounded `Field` object. 
             TABLE_NAME : The name of table which be took from the class name.
-            FIELDS : A list which store the attribute name which is belong
-                     to `Field` object without set argument (primary_key =True)
 
         Parametes:
         ----------

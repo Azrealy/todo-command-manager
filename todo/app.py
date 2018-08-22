@@ -25,8 +25,8 @@ def main():
         # As usually Unix programs does, `todo` cmd use exit code 2 for
         # command line syntax errors and 1 for all other kinds of errors.
         print(str(e), file=sys.stderr)
-        sys.exit(2)
-        
+        sys.exit(1)
+
     except Exception:
         print('Failed to execute todo command...', file=sys.stderr)
         sys.exit(1)

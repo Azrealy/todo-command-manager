@@ -121,7 +121,7 @@ def test_todo_cli_delete_command_when_task_not_exist():
     _, stderr = p.communicate()
 
     # check return code
-    assert p.returncode == 2
+    assert p.returncode == 1
 
     # check std
     cmd_output = str(stderr, encoding='utf-8')
@@ -162,7 +162,7 @@ def test_todo_cli_update_command_when_task_not_exist():
     stdout, stderr = p.communicate()
 
     # check return code
-    assert p.returncode == 2
+    assert p.returncode == 1
 
     # check stdout
     cmd_output = str(stderr, encoding='utf-8')
@@ -224,7 +224,7 @@ def test_todo_cli_complete_command_when_task_not_exist():
     stdout, stderr = p.communicate()
 
     # check return code
-    assert p.returncode == 2
+    assert p.returncode == 1
 
     # check stdout
     cmd_output = str(stderr, encoding='utf-8')
